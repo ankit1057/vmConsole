@@ -103,15 +103,12 @@ jobs:
         run: |
           cd ./external/libvmc/scripts
           docker build -t libvmc-buildenv .
-
       - name: Compile QEMU package
         if: ${{ steps.libvmc-cache.outputs.cache-hit != 'true' }}
         run: |
           cd ./external/libvmc
-
           # Ensure that built libVMC.so won't be mixed with prebuilt.
           find ./jniLibs -type f -delete
-
           case "${{ matrix.abi }}" in
             arm64-v8a) arch=aarch64;;
             armeabi-v7a) arch=arm;;
@@ -120,7 +117,6 @@ jobs:
             *) echo "Unknown ABI: ${{ matrix.abi }}"; exit 1;;
           esac
           ./scripts/run-docker.sh ./build-package.sh -a "$arch" qemu-system
-
   app:
     name: Build application
     needs: [alpine-iso, libvmc]
@@ -167,14 +163,11 @@ jobs:
         run: |
           # Detect missing ISO file.
           [ ! -f ./app/src/main/assets/alpine-x86_64.iso ] && exit 1
-
           # Detect missing JNI libraries.
           for abi in arm64-v8a armeabi-v7a x86 x86_64; do
             [ ! -f "./external/libvmc/jniLibs/${abi}/libVMC.so" ] && exit 1
           done
-
           mkdir -p ./artifacts
-
           if [ "${{ startsWith(github.ref, 'refs/tags/') }}" = "true" ]; then
             ./gradlew assembleRelease
             mkdir -p ./artifacts/apk
