@@ -19,7 +19,7 @@ android {
 
         splits {
             abi {
-                enable false
+                enable true
                 reset()
                 include 'arm64-v8a', 'x86_64', 'armeabi-v7a', 'x86'
                 universalApk true
@@ -54,6 +54,12 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
+    }
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['../../../external/libvmc/jniLibs']
+            java.srcDirs = ['src']
+        }
     }
 
     packagingOptions {
