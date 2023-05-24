@@ -43,7 +43,7 @@ jobs:
 
   alpine-iso:
     name: Build Alpine Linux ISO
-    needs: terminal-tests
+#    needs: terminal-tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -169,22 +169,22 @@ jobs:
           done
           mkdir -p ./artifacts
           if [ "${{ startsWith(github.ref, 'refs/tags/') }}" = "true" ]; then
-            ./gradlew assembleRelease
+            ./gradlew assembleDebug
             mkdir -p ./artifacts/apk
             mv ./app/build/outputs/apk/release/* ./artifacts/apk/
-            ./gradlew bundleRelease
+            ./gradlew bundleDebug
             mkdir -p ./artifacts/bundle
             mv ./app/build/outputs/bundle/release/* ./artifacts/bundle/
           else
-            if [ -n "$KEY_PASSPHRASE" ]; then
-              sed -i -E 's|//(signingConfig signingConfigs.release)|\1|g' ./app/build.gradle
-            fi
+#            if [ -n "$KEY_PASSPHRASE" ]; then
+#              sed -i -E 's|//(signingConfig signingConfigs.release)|\1|g' ./app/build.gradle
+#            fi
             ./gradlew assembleDebug
             mkdir -p ./artifacts/apk
             mv ./app/build/outputs/apk/debug/* ./artifacts/apk/
-          fi
-        env:
-          KEY_PASSPHRASE: "${{ secrets.ANDROID_KEY_PASSPHRASE }}"
+#          fi
+#        env:
+#          KEY_PASSPHRASE: "${{ secrets.ANDROID_KEY_PASSPHRASE }}"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
