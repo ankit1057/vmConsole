@@ -14,7 +14,22 @@ android {
         targetSdkVersion 33
         versionCode 29
         versionName "2.1.0"
+        ndk.abiFilters 'armeabi-v7a','arm64-v8a','x86','x86_64'
+        externalNativeBuild {
 
+            // For ndk-build, instead use the ndkBuild block.
+            cmake {
+
+                // Passes optional arguments to CMake.
+                arguments "-DANDROID_ARM_NEON=TRUE", "-DANDROID_TOOLCHAIN=clang"
+
+                // Sets a flag to enable format macro constants for the C compiler.
+                cFlags "-D__STDC_FORMAT_MACROS"
+
+                // Sets optional flags for the C++ compiler.
+                cppFlags "-fexceptions", "-frtti"
+            }
+        }
         archivesBaseName = "vmConsole-$versionName"
 
         splits {
@@ -57,14 +72,15 @@ android {
     }
     sourceSets {
         main {
-            jniLibs.srcDirs = ['../../../external/libvmc/jniLibs']
-            java.srcDirs = ['src']
+            jniLibs.srcDirs = ['src/main/jnilibs']
         }
     }
 
-    packagingOptions {
+    ndkVersion '25.2.9519653'
+
+    /*packagingOptions {
         jniLibs.useLegacyPackaging = true
-    }
+    }*/
 
     testOptions {
         unitTests.returnDefaultValues = true

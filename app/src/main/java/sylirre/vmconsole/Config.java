@@ -55,7 +55,7 @@ public class Config {
      * Minimal RAM allocation in MiB which guarantees that guest OS will
      * boot and work properly.
      */
-    public static final int QEMU_MIN_SAFE_RAM = 2048;
+    public static final int QEMU_MIN_SAFE_RAM = 4000;
 
     /**
      * Max RAM allocation in MiB which is considered to be safe.
