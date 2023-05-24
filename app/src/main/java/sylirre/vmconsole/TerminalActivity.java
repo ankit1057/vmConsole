@@ -438,7 +438,7 @@ public final class TerminalActivity extends Activity implements ServiceConnectio
         processArgs.addAll(Arrays.asList("-cpu", "max"));
 
         // Emulate SMP.
-        processArgs.addAll(Arrays.asList("-smp", "cpus=4,cores=1,threads=1"));
+        processArgs.addAll(Arrays.asList("-smp", "cpus=4,cores=4,threads=40"));
 
         // Use information about available free memory reported by Android OS to
         // choose appropriate values.
