@@ -127,35 +127,35 @@ jobs:
         id: build-id
         run: echo "::set-output name=git_rev::$(git rev-parse --short HEAD)"
 
-      - name: Get cached system image
-        uses: actions/cache@v3
-        with:
-          path: ./app/src/main/assets/alpine-x86_64.iso
-          key: alpine-iso--${{ hashFiles('./app/build.gradle', './external/alpine_iso/**', '!./external/alpine_iso/**.md') }}
+#       - name: Get cached system image
+#         uses: actions/cache@v3
+#         with:
+#           path: ./app/src/main/assets/alpine-x86_64.iso
+#           key: alpine-iso--${{ hashFiles('./app/build.gradle', './external/alpine_iso/**', '!./external/alpine_iso/**.md') }}
 
-      - name: Get cached libVMC.so (arm64-v8a)
-        uses: actions/cache@v3
-        with:
-          path: ./external/libvmc/jniLibs/arm64-v8a/libVMC.so
-          key: libvmc--arm64-v8a--${{ hashFiles('./app/build.gradle', './external/libvmc/**', '!./external/libvmc/**.md') }}
+#       - name: Get cached libVMC.so (arm64-v8a)
+#         uses: actions/cache@v3
+#         with:
+#           path: ./external/libvmc/jniLibs/arm64-v8a/libVMC.so
+#           key: libvmc--arm64-v8a--${{ hashFiles('./app/build.gradle', './external/libvmc/**', '!./external/libvmc/**.md') }}
 
-      - name: Get cached libVMC.so (armeabi-v7a)
-        uses: actions/cache@v3
-        with:
-          path: ./external/libvmc/jniLibs/armeabi-v7a/libVMC.so
-          key: libvmc--armeabi-v7a--${{ hashFiles('./app/build.gradle', './external/libvmc/**', '!./external/libvmc/**.md') }}
+#       - name: Get cached libVMC.so (armeabi-v7a)
+#         uses: actions/cache@v3
+#         with:
+#           path: ./external/libvmc/jniLibs/armeabi-v7a/libVMC.so
+#           key: libvmc--armeabi-v7a--${{ hashFiles('./app/build.gradle', './external/libvmc/**', '!./external/libvmc/**.md') }}
 
-      - name: Get cached libVMC.so (x86)
-        uses: actions/cache@v3
-        with:
-          path: ./external/libvmc/jniLibs/x86/libVMC.so
-          key: libvmc--x86--${{ hashFiles('./app/build.gradle', './external/libvmc/**', '!./external/libvmc/**.md') }}
+#       - name: Get cached libVMC.so (x86)
+#         uses: actions/cache@v3
+#         with:
+#           path: ./external/libvmc/jniLibs/x86/libVMC.so
+#           key: libvmc--x86--${{ hashFiles('./app/build.gradle', './external/libvmc/**', '!./external/libvmc/**.md') }}
 
-      - name: Get cached libVMC.so (x86_64)
-        uses: actions/cache@v3
-        with:
-          path: ./external/libvmc/jniLibs/x86_64/libVMC.so
-          key: libvmc--x86_64--${{ hashFiles('./app/build.gradle', './external/libvmc/**', '!./external/libvmc/**.md') }}
+#       - name: Get cached libVMC.so (x86_64)
+#         uses: actions/cache@v3
+#         with:
+#           path: ./external/libvmc/jniLibs/x86_64/libVMC.so
+#           key: libvmc--x86_64--${{ hashFiles('./app/build.gradle', './external/libvmc/**', '!./external/libvmc/**.md') }}
 
       - name: Create APK
         run: |
