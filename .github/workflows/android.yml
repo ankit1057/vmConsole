@@ -162,18 +162,9 @@ jobs:
 
           
           mkdir -p ./artifacts
-          if [ "${{ startsWith(github.ref, 'refs/tags/') }}" = "true" ]; then
-            ./gradlew assembleDebug
-            mkdir -p ./artifacts/apk
-            mv ./app/build/outputs/apk/release/* ./artifacts/apk/
-            ./gradlew bundleDebug
-            mkdir -p ./artifacts/bundle
-            mv ./app/build/outputs/bundle/release/* ./artifacts/bundle/
-          else
-
-            ./gradlew assembleDebug
-            mkdir -p ./artifacts/apk
-            mv ./app/build/outputs/apk/debug/* ./artifacts/apk/
+          ./gradlew assembleDebug
+          mkdir -p ./artifacts/apk
+          mv ./app/build/outputs/apk/debug/* ./artifacts/apk/
 #          fi
 #        env:
 #          KEY_PASSPHRASE: "${{ secrets.ANDROID_KEY_PASSPHRASE }}"
