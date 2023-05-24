@@ -49,20 +49,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Setup Abuild key
-        run: |
-          # Create ephemeral key if no secret passphrase provided.
-          if [ -z "$RSA_KEY_PASSPHRASE" ]; then
-            cd ./external/alpine_iso/abuild-keys
-            rm -f vmconsole-dev.*
-            openssl genrsa -out vmconsole-dev.rsa 2048
-            openssl rsa -in vmconsole-dev.rsa -pubout -out vmconsole-dev.rsa.pub
-            openssl aes-256-cbc -in vmconsole-dev.rsa -out vmconsole-dev.rsa.enc -k "pass" -pbkdf2
-            rm -f vmconsole-dev.rsa
-            cd ..
-          fi
-        env:
-          RSA_KEY_PASSPHRASE: ${{ secrets.ABUILD_KEY_PASSPHRASE }}
+#       - name: Setup Abuild key
+#         run: |
+#           # Create ephemeral key if no secret passphrase provided.
+#           if [ -z "$RSA_KEY_PASSPHRASE" ]; then
+#             cd ./external/alpine_iso/abuild-keys
+#             rm -f vmconsole-dev.*
+#             openssl genrsa -out vmconsole-dev.rsa 2048
+#             openssl rsa -in vmconsole-dev.rsa -pubout -out vmconsole-dev.rsa.pub
+#             openssl aes-256-cbc -in vmconsole-dev.rsa -out vmconsole-dev.rsa.enc -k "pass" -pbkdf2
+#             rm -f vmconsole-dev.rsa
+#             cd ..
+#           fi
+#         env:
+#           RSA_KEY_PASSPHRASE: ${{ secrets.ABUILD_KEY_PASSPHRASE }}
 
       - name: Cache artifacts
         id: iso-cache
@@ -74,11 +74,9 @@ jobs:
       - name: Build Alpine Linux ISO
         if: ${{ steps.iso-cache.outputs.cache-hit != 'true' }}
         run: |
-          cd ./external/alpine_iso
-          [ -z "$RSA_KEY_PASSPHRASE" ] && export RSA_KEY_PASSPHRASE=pass
+          cd ./external/alpine_iso          
           make build-docker OUTPUT_DIR=$(realpath ../../app/src/main/assets)
-        env:
-          RSA_KEY_PASSPHRASE: ${{ secrets.ABUILD_KEY_PASSPHRASE }}
+        
 
   libvmc:
     name: Build libVMC.so
@@ -169,10 +167,10 @@ jobs:
           done
           mkdir -p ./artifacts
           if [ "${{ startsWith(github.ref, 'refs/tags/') }}" = "true" ]; then
-            ./gradlew assembleRelease
+            ./gradlew assembleDebug
             mkdir -p ./artifacts/apk
             mv ./app/build/outputs/apk/release/* ./artifacts/apk/
-            ./gradlew bundleRelease
+            ./gradlew bundleDebug
             mkdir -p ./artifacts/bundle
             mv ./app/build/outputs/bundle/release/* ./artifacts/bundle/
           else
