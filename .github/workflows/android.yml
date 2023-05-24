@@ -41,83 +41,83 @@ jobs:
 #      - name: Testing terminal emulator library
 #        run: ./gradlew test
 
-  alpine-iso:
-    name: Build Alpine Linux ISO
-#     needs: terminal-tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+#   alpine-iso:
+#     name: Build Alpine Linux ISO
+# #     needs: terminal-tests
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v3
 
-#       - name: Setup Abuild key
+# #       - name: Setup Abuild key
+# #         run: |
+# #           # Create ephemeral key if no secret passphrase provided.
+# #           if [ -z "$RSA_KEY_PASSPHRASE" ]; then
+# #             cd ./external/alpine_iso/abuild-keys
+# #             rm -f vmconsole-dev.*
+# #             openssl genrsa -out vmconsole-dev.rsa 2048
+# #             openssl rsa -in vmconsole-dev.rsa -pubout -out vmconsole-dev.rsa.pub
+# #             openssl aes-256-cbc -in vmconsole-dev.rsa -out vmconsole-dev.rsa.enc -k "pass" -pbkdf2
+# #             rm -f vmconsole-dev.rsa
+# #             cd ..
+# #           fi
+# #         env:
+# #           RSA_KEY_PASSPHRASE: ${{ secrets.ABUILD_KEY_PASSPHRASE }}
+
+#       - name: Cache artifacts
+#         id: iso-cache
+#         uses: actions/cache@v3
+#         with:
+#           path: ./app/src/main/assets/alpine-x86_64.iso
+#           key: alpine-iso--${{ hashFiles('./app/build.gradle', './external/alpine_iso/**', '!./external/alpine_iso/**.md') }}
+
+#       - name: Build Alpine Linux ISO
+#         if: ${{ steps.iso-cache.outputs.cache-hit != 'true' }}
 #         run: |
-#           # Create ephemeral key if no secret passphrase provided.
-#           if [ -z "$RSA_KEY_PASSPHRASE" ]; then
-#             cd ./external/alpine_iso/abuild-keys
-#             rm -f vmconsole-dev.*
-#             openssl genrsa -out vmconsole-dev.rsa 2048
-#             openssl rsa -in vmconsole-dev.rsa -pubout -out vmconsole-dev.rsa.pub
-#             openssl aes-256-cbc -in vmconsole-dev.rsa -out vmconsole-dev.rsa.enc -k "pass" -pbkdf2
-#             rm -f vmconsole-dev.rsa
-#             cd ..
-#           fi
-#         env:
-#           RSA_KEY_PASSPHRASE: ${{ secrets.ABUILD_KEY_PASSPHRASE }}
-
-      - name: Cache artifacts
-        id: iso-cache
-        uses: actions/cache@v3
-        with:
-          path: ./app/src/main/assets/alpine-x86_64.iso
-          key: alpine-iso--${{ hashFiles('./app/build.gradle', './external/alpine_iso/**', '!./external/alpine_iso/**.md') }}
-
-      - name: Build Alpine Linux ISO
-        if: ${{ steps.iso-cache.outputs.cache-hit != 'true' }}
-        run: |
-          cd ./external/alpine_iso          
-          make build-docker OUTPUT_DIR=$(realpath ../../app/src/main/assets)
+#           cd ./external/alpine_iso          
+#           make build-docker OUTPUT_DIR=$(realpath ../../app/src/main/assets)
         
 
-  libvmc:
-    name: Build libVMC.so
-#     needs: terminal-tests
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        abi: [arm64-v8a, armeabi-v7a, x86, x86_64]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+#   libvmc:
+#     name: Build libVMC.so
+# #     needs: terminal-tests
+#     runs-on: ubuntu-latest
+#     strategy:
+#       matrix:
+#         abi: [arm64-v8a, armeabi-v7a, x86, x86_64]
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v3
 
-      - name: Cache artifacts
-        id: libvmc-cache
-        uses: actions/cache@v3
-        with:
-          path: ./external/libvmc/jniLibs/${{ matrix.abi }}/libVMC.so
-          key: libvmc--${{ matrix.abi }}--${{ hashFiles('./app/build.gradle', './external/libvmc/**', '!./external/libvmc/**.md') }}
+#       - name: Cache artifacts
+#         id: libvmc-cache
+#         uses: actions/cache@v3
+#         with:
+#           path: ./external/libvmc/jniLibs/${{ matrix.abi }}/libVMC.so
+#           key: libvmc--${{ matrix.abi }}--${{ hashFiles('./app/build.gradle', './external/libvmc/**', '!./external/libvmc/**.md') }}
 
-      - name: Setup build environment
-        if: ${{ steps.libvmc-cache.outputs.cache-hit != 'true' }}
-        run: |
-          cd ./external/libvmc/scripts
-          docker build -t libvmc-buildenv .
-      - name: Compile QEMU package
-        if: ${{ steps.libvmc-cache.outputs.cache-hit != 'true' }}
-        run: |
-          cd ./external/libvmc
-          # Ensure that built libVMC.so won't be mixed with prebuilt.
-          find ./jniLibs -type f -delete
-          case "${{ matrix.abi }}" in
-            arm64-v8a) arch=aarch64;;
-            armeabi-v7a) arch=arm;;
-            x86) arch=i686;;
-            x86_64) arch=x86_64;;
-            *) echo "Unknown ABI: ${{ matrix.abi }}"; exit 1;;
-          esac
-          ./scripts/run-docker.sh ./build-package.sh -a "$arch" qemu-system
+#       - name: Setup build environment
+#         if: ${{ steps.libvmc-cache.outputs.cache-hit != 'true' }}
+#         run: |
+#           cd ./external/libvmc/scripts
+#           docker build -t libvmc-buildenv .
+#       - name: Compile QEMU package
+#         if: ${{ steps.libvmc-cache.outputs.cache-hit != 'true' }}
+#         run: |
+#           cd ./external/libvmc
+#           # Ensure that built libVMC.so won't be mixed with prebuilt.
+#           find ./jniLibs -type f -delete
+#           case "${{ matrix.abi }}" in
+#             arm64-v8a) arch=aarch64;;
+#             armeabi-v7a) arch=arm;;
+#             x86) arch=i686;;
+#             x86_64) arch=x86_64;;
+#             *) echo "Unknown ABI: ${{ matrix.abi }}"; exit 1;;
+#           esac
+#           ./scripts/run-docker.sh ./build-package.sh -a "$arch" qemu-system
   app:
     name: Build application
-    needs: [alpine-iso, libvmc]
+#     needs: [alpine-iso, libvmc]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -159,25 +159,12 @@ jobs:
 
       - name: Create APK
         run: |
-          # Detect missing ISO file.
-          [ ! -f ./app/src/main/assets/alpine-x86_64.iso ] && exit 1
-          # Detect missing JNI libraries.
-          for abi in arm64-v8a armeabi-v7a x86 x86_64; do
-            [ ! -f "./external/libvmc/jniLibs/${abi}/libVMC.so" ] && exit 1
-          done
-          mkdir -p ./artifacts
-          if [ "${{ startsWith(github.ref, 'refs/tags/') }}" = "true" ]; then
-            ./gradlew assembleDebug
-            mkdir -p ./artifacts/apk
-            mv ./app/build/outputs/apk/release/* ./artifacts/apk/
-            ./gradlew bundleDebug
-            mkdir -p ./artifacts/bundle
-            mv ./app/build/outputs/bundle/release/* ./artifacts/bundle/
-          else
 
-            ./gradlew assembleDebug
-            mkdir -p ./artifacts/apk
-            mv ./app/build/outputs/apk/debug/* ./artifacts/apk/
+          
+          mkdir -p ./artifacts
+          ./gradlew assembleDebug
+          mkdir -p ./artifacts/apk
+          mv ./app/build/outputs/apk/debug/* ./artifacts/apk/
 #          fi
 #        env:
 #          KEY_PASSPHRASE: "${{ secrets.ANDROID_KEY_PASSPHRASE }}"
