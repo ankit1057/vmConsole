@@ -43,7 +43,7 @@ jobs:
 
   alpine-iso:
     name: Build Alpine Linux ISO
-    needs: terminal-tests
+#     needs: terminal-tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -82,7 +82,7 @@ jobs:
 
   libvmc:
     name: Build libVMC.so
-    needs: terminal-tests
+#     needs: terminal-tests
     runs-on: ubuntu-latest
     strategy:
       matrix:
