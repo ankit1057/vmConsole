@@ -1,26 +1,218 @@
-name: Android CI
+name: Application
 
 on:
-  push:
-    branches: [ "main" ]
   pull_request:
-    branches: [ "main" ]
+    types: [opened, synchronize]
+  push:
+    branches:
+      - main
+      - development
+    paths:
+      - .github/workflows/*
+      - app/**
+      - external/alpine_iso/**
+      - external/libvmc/**
+      - gradle/**
+      - gradle*
+      - ./*.gradle
+    tags:
+      - '*'
+  workflow_dispatch:
 
 jobs:
-  build:
-
+  gradle-wrapper-check:
+    name: Validate Gradle wrapper
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v3
-    - name: set up JDK 11
-      uses: actions/setup-java@v3
-      with:
-        java-version: '11'
-        distribution: 'temurin'
-        cache: gradle
+      - name: Checkout
+        uses: actions/checkout@v3
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-    - name: Build with Gradle
-      run: ./gradlew build
+      - name: Validation
+        uses: gradle/wrapper-validation-action@v1
+
+#  terminal-tests:
+#    name: Run unit tests for terminal emulator
+#    needs: gradle-wrapper-check
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout
+#        uses: actions/checkout@v3
+#
+#      - name: Testing terminal emulator library
+#        run: ./gradlew test
+
+  alpine-iso:
+    name: Build Alpine Linux ISO
+    needs: terminal-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Abuild key
+        run: |
+          # Create ephemeral key if no secret passphrase provided.
+          if [ -z "$RSA_KEY_PASSPHRASE" ]; then
+            cd ./external/alpine_iso/abuild-keys
+            rm -f vmconsole-dev.*
+            openssl genrsa -out vmconsole-dev.rsa 2048
+            openssl rsa -in vmconsole-dev.rsa -pubout -out vmconsole-dev.rsa.pub
+            openssl aes-256-cbc -in vmconsole-dev.rsa -out vmconsole-dev.rsa.enc -k "pass" -pbkdf2
+            rm -f vmconsole-dev.rsa
+            cd ..
+          fi
+        env:
+          RSA_KEY_PASSPHRASE: ${{ secrets.ABUILD_KEY_PASSPHRASE }}
+
+      - name: Cache artifacts
+        id: iso-cache
+        uses: actions/cache@v3
+        with:
+          path: ./app/src/main/assets/alpine-x86_64.iso
+          key: alpine-iso--${{ hashFiles('./app/build.gradle', './external/alpine_iso/**', '!./external/alpine_iso/**.md') }}
+
+      - name: Build Alpine Linux ISO
+        if: ${{ steps.iso-cache.outputs.cache-hit != 'true' }}
+        run: |
+          cd ./external/alpine_iso
+          [ -z "$RSA_KEY_PASSPHRASE" ] && export RSA_KEY_PASSPHRASE=pass
+          make build-docker OUTPUT_DIR=$(realpath ../../app/src/main/assets)
+        env:
+          RSA_KEY_PASSPHRASE: ${{ secrets.ABUILD_KEY_PASSPHRASE }}
+
+  libvmc:
+    name: Build libVMC.so
+    needs: terminal-tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        abi: [arm64-v8a, armeabi-v7a, x86, x86_64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Cache artifacts
+        id: libvmc-cache
+        uses: actions/cache@v3
+        with:
+          path: ./external/libvmc/jniLibs/${{ matrix.abi }}/libVMC.so
+          key: libvmc--${{ matrix.abi }}--${{ hashFiles('./app/build.gradle', './external/libvmc/**', '!./external/libvmc/**.md') }}
+
+      - name: Setup build environment
+        if: ${{ steps.libvmc-cache.outputs.cache-hit != 'true' }}
+        run: |
+          cd ./external/libvmc/scripts
+          docker build -t libvmc-buildenv .
+      - name: Compile QEMU package
+        if: ${{ steps.libvmc-cache.outputs.cache-hit != 'true' }}
+        run: |
+          cd ./external/libvmc
+          # Ensure that built libVMC.so won't be mixed with prebuilt.
+          find ./jniLibs -type f -delete
+          case "${{ matrix.abi }}" in
+            arm64-v8a) arch=aarch64;;
+            armeabi-v7a) arch=arm;;
+            x86) arch=i686;;
+            x86_64) arch=x86_64;;
+            *) echo "Unknown ABI: ${{ matrix.abi }}"; exit 1;;
+          esac
+          ./scripts/run-docker.sh ./build-package.sh -a "$arch" qemu-system
+  app:
+    name: Build application
+    needs: [alpine-iso, libvmc]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Get build id
+        id: build-id
+        run: echo "::set-output name=git_rev::$(git rev-parse --short HEAD)"
+
+      - name: Get cached system image
+        uses: actions/cache@v3
+        with:
+          path: ./app/src/main/assets/alpine-x86_64.iso
+          key: alpine-iso--${{ hashFiles('./app/build.gradle', './external/alpine_iso/**', '!./external/alpine_iso/**.md') }}
+
+      - name: Get cached libVMC.so (arm64-v8a)
+        uses: actions/cache@v3
+        with:
+          path: ./external/libvmc/jniLibs/arm64-v8a/libVMC.so
+          key: libvmc--arm64-v8a--${{ hashFiles('./app/build.gradle', './external/libvmc/**', '!./external/libvmc/**.md') }}
+
+      - name: Get cached libVMC.so (armeabi-v7a)
+        uses: actions/cache@v3
+        with:
+          path: ./external/libvmc/jniLibs/armeabi-v7a/libVMC.so
+          key: libvmc--armeabi-v7a--${{ hashFiles('./app/build.gradle', './external/libvmc/**', '!./external/libvmc/**.md') }}
+
+      - name: Get cached libVMC.so (x86)
+        uses: actions/cache@v3
+        with:
+          path: ./external/libvmc/jniLibs/x86/libVMC.so
+          key: libvmc--x86--${{ hashFiles('./app/build.gradle', './external/libvmc/**', '!./external/libvmc/**.md') }}
+
+      - name: Get cached libVMC.so (x86_64)
+        uses: actions/cache@v3
+        with:
+          path: ./external/libvmc/jniLibs/x86_64/libVMC.so
+          key: libvmc--x86_64--${{ hashFiles('./app/build.gradle', './external/libvmc/**', '!./external/libvmc/**.md') }}
+
+      - name: Create APK
+        run: |
+          # Detect missing ISO file.
+          [ ! -f ./app/src/main/assets/alpine-x86_64.iso ] && exit 1
+          # Detect missing JNI libraries.
+          for abi in arm64-v8a armeabi-v7a x86 x86_64; do
+            [ ! -f "./external/libvmc/jniLibs/${abi}/libVMC.so" ] && exit 1
+          done
+          mkdir -p ./artifacts
+          if [ "${{ startsWith(github.ref, 'refs/tags/') }}" = "true" ]; then
+            ./gradlew assembleRelease
+            mkdir -p ./artifacts/apk
+            mv ./app/build/outputs/apk/release/* ./artifacts/apk/
+            ./gradlew bundleRelease
+            mkdir -p ./artifacts/bundle
+            mv ./app/build/outputs/bundle/release/* ./artifacts/bundle/
+          else
+
+            ./gradlew assembleDebug
+            mkdir -p ./artifacts/apk
+            mv ./app/build/outputs/apk/debug/* ./artifacts/apk/
+#          fi
+#        env:
+#          KEY_PASSPHRASE: "${{ secrets.ANDROID_KEY_PASSPHRASE }}"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: vmConsole-git-${{ steps.build-id.outputs.git_rev }}
+          path: ./artifacts/
+
+  publish:
+    name: Publish release
+    needs: [app]
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Get build id
+        id: build-id
+        run: echo "::set-output name=git_rev::$(git rev-parse --short HEAD)"
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: vmConsole-git-${{ steps.build-id.outputs.git_rev }}
+          path: ./artifacts/
+
+#      - name: Publish release
+#        if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
+#        run: |
+#          TAG="${GITHUB_REF##*/}"
+#          hub release create -m "${TAG}" -a ./artifacts/apk/vmConsole-*-release.apk "${TAG}"
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
