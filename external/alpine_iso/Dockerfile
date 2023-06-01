@@ -1,33 +1,61 @@
-FROM alpine:edge
+# alpine-vnc - A basic, graphical alpine workstation
+# includes xfce, vnc, ssh
+# last update: May/29/2022
 
-ARG USER_ID 1000
-ARG RSA_KEY_PASSPHRASE pass
+FROM alpine:3.16
 
-COPY /abuild-keys /abuild-keys
-COPY /extras /custom-packages/extras
+# init ash file (for non-login shells)
+ENV ENV '$HOME/.ashrc'
 
-RUN apk upgrade && \
-    apk add alpine-sdk build-base apk-tools alpine-conf openssl \
-        busybox fakeroot syslinux xorriso squashfs-tools sudo && \
-    adduser -s /bin/ash -G abuild -D -h /home/build -u ${USER_ID} build && \
-    mkdir -p /home/build/.abuild && chown build /home/build/.abuild && \
-    openssl aes-256-cbc -d -in /abuild-keys/vmconsole-dev.rsa.enc \
-        -out /home/build/.abuild/vmconsole-dev.rsa \
-        -k "$RSA_KEY_PASSPHRASE" -pbkdf2 && \
-    chown build /home/build/.abuild/vmconsole-dev.rsa && \
-    chmod 600 /home/build/.abuild/vmconsole-dev.rsa && \
-    cp /abuild-keys/vmconsole-dev.rsa.pub /home/build/.abuild/vmconsole-dev.rsa.pub && \
-    chown build /home/build/.abuild/vmconsole-dev.rsa.pub && \
-    cp /abuild-keys/vmconsole-dev.rsa.pub /etc/apk/keys/vmconsole-dev.rsa.pub && \
-    chown root:root /etc/apk/keys/vmconsole-dev.rsa.pub && \
-    chmod 644 /etc/apk/keys/vmconsole-dev.rsa.pub && \
-    echo "PACKAGER_PRIVKEY=/home/build/.abuild/vmconsole-dev.rsa" > \
-        /home/build/.abuild/abuild.conf && \
-    chown build /home/build/.abuild/abuild.conf && \
-    chmod 644 /home/build/.abuild/abuild.conf && \
-    chown -Rh build:abuild /custom-packages && \
-    echo "build ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/build
+# default screen size
+ENV XRES 1280x800x24
 
-USER build
+# default tzdata settings
+ENV TZ Etc/UTC
 
-CMD ["/bin/ash"]
+# update and install system software
+RUN apk update && apk upgrade 
+	
+RUN apk add sudo supervisor openssh-server openssh nano tzdata 
+RUN apk add xvfb x11vnc 
+RUN apk add xfce4 xfce4-terminal xfce4-xkb-plugin mousepad adwaita-icon-theme
+
+# add main user
+RUN adduser -D alpine
+
+# change passwords and permissions
+RUN 	echo "root:alpine" | /usr/sbin/chpasswd \
+    && 	echo "alpine:alpine" | /usr/sbin/chpasswd \
+    && 	echo "alpine ALL=(ALL) ALL" >> /etc/sudoers 	
+
+# setup sshd
+RUN 	mkdir /run/sshd \
+	&& 	ssh-keygen -A
+
+# add my sys config files
+ADD etc /etc
+
+# customizations
+RUN 	echo "alias ll='ls -l'" > /home/alpine/.ashrc \
+	&& 	echo "alias lla='ls -al'" >> /home/alpine/.ashrc \
+	&& 	echo "alias llh='ls -hl'" >> /home/alpine/.ashrc \
+	&& 	echo "alias hh=history" >> /home/alpine/.ashrc \
+	#
+	# ash personal config file for login shell mode
+	&& cp /home/alpine/.ashrc /home/alpine/.profile 
+
+# personal xfce4 config
+ADD config/xfce4/terminal/terminalrc /home/alpine/.config/xfce4/terminal/terminalrc
+
+# set custom wallpaper
+ADD config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml  \
+	/home/alpine/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml
+
+# RUN chown -R alpine:alpine /home/alpine/.config /home/alpine/.xscreensaver
+RUN chown -R alpine:alpine /home/alpine/
+
+# exposed ports
+EXPOSE 22 5900
+
+# default command
+CMD ["/usr/bin/supervisord","-c","/etc/supervisord.conf"]
