@@ -160,6 +160,7 @@ jobs:
           key: libvmc--x86_64--${{ hashFiles('./app/build.gradle', './external/libvmc/**', '!./external/libvmc/**.md') }}
 
       - name: Create APK
+
         run: |
           # Detect missing ISO file.
           [ ! -f ./app/src/main/assets/alpine-x86_64.iso ] && exit 1
